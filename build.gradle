@@ -1,0 +1,21 @@
+apply plugin: 'scala'
+apply plugin: 'java'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile 'org.scala-lang:scala-library:2.10.4'
+}
+
+tasks.withType(ScalaCompile) {
+    scalaCompileOptions.useAnt = false
+}
+
+dependencies {
+    compile group: 'com.typesafe.akka', name: 'akka-actor_2.10', version: '2.3.3'
+    compile group: 'org.scala-lang', name: 'scala-library', version: '2.10.4'
+}
