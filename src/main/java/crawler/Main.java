@@ -2,7 +2,6 @@ package crawler;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
-import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.dispatch.OnSuccess;
 import akka.event.Logging;
@@ -35,11 +34,10 @@ public class Main {
             @Override
             public void onSuccess(Object o) throws Throwable {
                 LinkedList<URI> l = ((LinksList) o).getLinks();
-                log.info("Number of links discovered: "+l.size());
+                log.info("Number of links discovered: " + l.size());
                 for (URI uri : l) {
-                    System.out.println(l);
+                    System.out.println(uri);
                 }
-                manager.tell(PoisonPill.getInstance(), null);
                 system.shutdown();
             }
         }, system.dispatcher());
