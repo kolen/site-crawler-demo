@@ -8,10 +8,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
-import crawler.messages.AddDomain;
-import crawler.messages.DomainFinished;
-import crawler.messages.DumpLinks;
-import crawler.messages.LinksList;
+import crawler.messages.*;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
@@ -21,6 +18,7 @@ import java.util.HashSet;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
+import static akka.pattern.Patterns.pipe;
 
 /**
  *
@@ -30,6 +28,7 @@ public class CrawlerManager extends AbstractActor {
     private HashMap<String, ActorRef> domainCrawlers = new HashMap<>();
     private HashSet<ActorRef> workingCrawlers = new HashSet<>();
     private ActorRef linkRegistry;
+    private ActorRef startInitiator; // Actor that initiated crawl start
 
     public CrawlerManager() {
         linkRegistry = context().actorOf(Props.create(LinkRegistry.class));
@@ -57,15 +56,23 @@ public class CrawlerManager extends AbstractActor {
                 .match(DomainFinished.class, m -> {
                     workingCrawlers.remove(sender());
                     if (workingCrawlers.isEmpty()) {
-                        log.info("All domains finished");
+                        log.info("All domains finished, telling "+startInitiator);
+                        log.info("r: "+linkRegistry);
                         final Future<Object> ask = ask(linkRegistry, new DumpLinks(),
                                 new Timeout(Duration.create(1, TimeUnit.MINUTES)));
-                        ask.onSuccess(new OnSuccess<Object>() {
-                            @Override
-                            public void onSuccess(Object o) throws Throwable {
-                                System.out.println(((LinksList)o).getLinks());
-                            }
-                        }, context().system().dispatcher());
+                        pipe(ask, context().system().dispatcher()).to(startInitiator);
+//                        ask.onSuccess(new OnSuccess<Object>() {
+//                            @Override
+//                            public void onSuccess(Object o) throws Throwable {
+//                                System.out.println(((LinksList)o).getLinks());
+//                            }
+//                        }, context().system().dispatcher());
+                    }
+                })
+                .match(StartCrawl.class, m -> {
+                    startInitiator = sender();
+                    for (ActorRef crawler : domainCrawlers.values()) {
+                        crawler.tell(new StartCrawl(), self());
                     }
                 })
                 .matchAny(this::unhandled).build());
