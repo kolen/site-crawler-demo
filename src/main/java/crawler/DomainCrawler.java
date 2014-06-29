@@ -78,8 +78,6 @@ public class DomainCrawler extends AbstractActor {
                     next();
                 })
                 .matchAny(this::unhandled).build());
-
-        next();
     }
 
     private void next() {
