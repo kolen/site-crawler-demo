@@ -9,8 +9,8 @@ import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import crawler.messages.AddDomain;
+import crawler.messages.DomainFinished;
 import crawler.messages.DumpLinks;
-import crawler.messages.FinishedDownloading;
 import crawler.messages.LinksList;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -53,9 +53,10 @@ public class CrawlerManager extends AbstractActor {
                         crawler.tell(uri, self());
                     }
                 })
-                .match(FinishedDownloading.class, m -> {
+                .match(DomainFinished.class, m -> {
                     workingCrawlers.remove(sender());
                     if (workingCrawlers.isEmpty()) {
+                        log.info("All domains finished");
                         final Future<Object> ask = ask(linkRegistry, new DumpLinks(),
                                 new Timeout(Duration.create(1, TimeUnit.MINUTES)));
                         ask.onSuccess(new OnSuccess<Object>() {
