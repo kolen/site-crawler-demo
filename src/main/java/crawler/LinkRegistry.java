@@ -22,7 +22,8 @@ public class LinkRegistry extends AbstractActor {
         receive(ReceiveBuilder
         .match(URI.class, uri -> {
             log.debug("Received uri: "+ uri);
-            links.add(uri);
+            URI uriWithoutFragment = new URI(uri.getScheme(), uri.getHost(), uri.getPath(), uri.getQuery());
+            links.add(uriWithoutFragment);
         })
         .match(DumpLinks.class, msg -> {
             LinkedList<URI> links_list = new LinkedList<>();
