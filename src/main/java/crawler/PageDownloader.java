@@ -26,7 +26,7 @@ public class PageDownloader extends AbstractActor {
     }
 
     public PageDownloader(ActorRef linkRegistry) {
-        final ActorRef extractor = getContext().actorOf(Props.create(LinkExtractor.class, linkRegistry));
+        final ActorRef extractor = getContext().actorOf(Props.create(LinkExtractor.class, linkRegistry), "extractor");
 
         receive(ReceiveBuilder
                 .match(URI.class, uri -> {
@@ -36,7 +36,7 @@ public class PageDownloader extends AbstractActor {
                     log.info("Get page "+response);
                     final String s = EntityUtils.toString(response.getEntity());
                     response.close();
-                    extractor.tell(new PageContent(s), self());
+                    extractor.tell(new PageContent(s, uri), self());
                 })
                 .matchAny(this::unhandled).build()
         );

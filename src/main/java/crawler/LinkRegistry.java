@@ -1,12 +1,10 @@
 package crawler;
 
 import akka.actor.AbstractActor;
-import akka.actor.UntypedActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import crawler.messages.DumpLinks;
-import crawler.messages.FoundLink;
 import crawler.messages.LinksList;
 
 import java.net.URI;
@@ -22,9 +20,9 @@ public class LinkRegistry extends AbstractActor {
 
     public LinkRegistry() {
         receive(ReceiveBuilder
-        .match(FoundLink.class, msg -> {
-            log.debug("Received FoundLink: "+ msg);
-            links.add(msg.getUri());
+        .match(URI.class, uri -> {
+            log.debug("Received uri: "+ uri);
+            links.add(uri);
         })
         .match(DumpLinks.class, msg -> {
             LinkedList<URI> links_list = new LinkedList<>();

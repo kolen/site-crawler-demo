@@ -8,7 +8,7 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
-import crawler.messages.FoundLink;
+import crawler.messages.DomainFinished;
 import crawler.messages.ProcessNext;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -28,21 +28,29 @@ public class DomainCrawler extends AbstractActor {
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
 
-    static Props props(ActorRef linkRegistry) {
-        return Props.create(DomainCrawler.class, () -> new DomainCrawler(linkRegistry));
+    static Props props(ActorRef crawlerManager) {
+        return Props.create(DomainCrawler.class, () -> new DomainCrawler(crawlerManager));
     }
 
-    public DomainCrawler(ActorRef linkRegistry) {
-        final ActorRef downloader = context().actorOf(Props.create(PageDownloader.class, linkRegistry));
+    public DomainCrawler(ActorRef crawlerManager) {
+        final ActorRef downloader = context().actorOf(Props.create(PageDownloader.class, crawlerManager), "downloader");
         receive(ReceiveBuilder
-                .match(FoundLink.class, msg -> {
-                    final URI found_uri = msg.getUri();
-                    if (!knownUrls.contains(found_uri)) {
-                        knownUrls.add(found_uri);
-                        queue.addLast(found_uri);
+                .match(URI.class, uri -> {
+                    if (knownUrls.isEmpty()) {
+                        next();
+                    }
+                    if (!knownUrls.contains(uri)) {
+                        knownUrls.add(uri);
+                        queue.addLast(uri);
                     }
                 })
                 .match(ProcessNext.class, msg -> {
+                    if (queue.isEmpty()) {
+                        log.info("Finished crawling "+self());
+                        crawlerManager.tell(new DomainFinished(), self());
+                        return;
+                    }
+
                     final Future<Object> f = ask(downloader, queue.removeFirst(),
                             new Timeout(Duration.create(30, TimeUnit.SECONDS)));
                     f.onComplete(new OnComplete<Object>() {
@@ -58,6 +66,10 @@ public class DomainCrawler extends AbstractActor {
                 })
                 .matchAny(this::unhandled).build());
 
+        next();
+    }
+
+    private void next() {
         self().tell(new ProcessNext(), self());
     }
 }
