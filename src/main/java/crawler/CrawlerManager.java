@@ -52,6 +52,7 @@ public class CrawlerManager extends AbstractActor {
                         workingCrawlers.add(crawler);
                         crawler.tell(uri, self());
                     }
+                    linkRegistry.tell(uri, self());
                 })
                 .match(DomainFinished.class, m -> {
                     workingCrawlers.remove(sender());
