@@ -24,6 +24,7 @@ import static akka.pattern.Patterns.ask;
  *
  */
 public class DomainCrawler extends AbstractActor {
+    public static final int MAX_URLS = 100;
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
@@ -37,7 +38,7 @@ public class DomainCrawler extends AbstractActor {
         final ActorRef downloader = context().actorOf(Props.create(PageDownloader.class, crawlerManager), "downloader");
         receive(ReceiveBuilder
                 .match(URI.class, uri -> {
-                    if (urlsQueued > 100) {
+                    if (urlsQueued > MAX_URLS) {
                         return;
                     }
 
