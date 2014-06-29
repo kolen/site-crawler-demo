@@ -2,8 +2,11 @@ package crawler;
 
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
+import akka.actor.PoisonPill;
 import akka.actor.Props;
 import akka.dispatch.OnSuccess;
+import akka.event.Logging;
+import akka.event.LoggingAdapter;
 import akka.util.Timeout;
 import crawler.messages.AddDomain;
 import crawler.messages.LinksList;
@@ -24,6 +27,7 @@ public class Main {
     public static void main(String[] args) {
         ActorSystem system = ActorSystem.create("crawler");
         ActorRef manager = system.actorOf(Props.create(CrawlerManager.class), "manager");
+        LoggingAdapter log = Logging.getLogger(system, Main.class);
 
         manager.tell(new AddDomain("example.com"), null);
         final Future<Object> result = ask(manager, new StartCrawl(), new Timeout(Duration.create(1, TimeUnit.HOURS)));
@@ -31,9 +35,12 @@ public class Main {
             @Override
             public void onSuccess(Object o) throws Throwable {
                 LinkedList<URI> l = ((LinksList) o).getLinks();
+                log.info("Number of links discovered: "+l.size());
                 for (URI uri : l) {
                     System.out.println(l);
                 }
+                manager.tell(PoisonPill.getInstance(), null);
+                system.shutdown();
             }
         }, system.dispatcher());
 
