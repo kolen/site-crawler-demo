@@ -27,6 +27,7 @@ public class DomainCrawler extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
+    private int urlsQueued = 0;
 
     static Props props(ActorRef crawlerManager) {
         return Props.create(DomainCrawler.class, () -> new DomainCrawler(crawlerManager));
@@ -36,12 +37,17 @@ public class DomainCrawler extends AbstractActor {
         final ActorRef downloader = context().actorOf(Props.create(PageDownloader.class, crawlerManager), "downloader");
         receive(ReceiveBuilder
                 .match(URI.class, uri -> {
+                    if (urlsQueued > 100) {
+                        return;
+                    }
+
                     if (knownUrls.isEmpty()) {
                         next();
                     }
                     if (!knownUrls.contains(uri)) {
                         knownUrls.add(uri);
                         queue.addLast(uri);
+                        urlsQueued++;
                     }
                 })
                 .match(ProcessNext.class, msg -> {
