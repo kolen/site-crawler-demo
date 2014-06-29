@@ -23,7 +23,6 @@ public class LinkExtractor extends AbstractActor {
     public LinkExtractor(ActorRef crawlerManager) {
         receive(ReceiveBuilder
                 .match(PageContent.class, msg -> {
-                    System.out.println(msg.getBaseURI());
                     final Document doc = Jsoup.parse(msg.getPageContent(), msg.getBaseURI().toString());
                     final Elements links = doc.select("a");
                     for (Element a : links) {
