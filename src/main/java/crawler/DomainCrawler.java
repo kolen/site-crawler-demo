@@ -10,6 +10,7 @@ import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import crawler.messages.DomainFinished;
 import crawler.messages.ProcessNext;
+import crawler.messages.StartCrawl;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
@@ -42,9 +43,6 @@ public class DomainCrawler extends AbstractActor {
                         return;
                     }
 
-                    if (knownUrls.isEmpty()) {
-                        next();
-                    }
                     if (!knownUrls.contains(uri)) {
                         knownUrls.add(uri);
                         queue.addLast(uri);
@@ -53,8 +51,6 @@ public class DomainCrawler extends AbstractActor {
                 })
                 .match(ProcessNext.class, msg -> {
                     if (queue.isEmpty()) {
-                        log.info("Finished crawling "+self());
-                        crawlerManager.tell(new DomainFinished(), self());
                         return;
                     }
 
@@ -64,12 +60,22 @@ public class DomainCrawler extends AbstractActor {
                         @Override
                         public void onComplete(Throwable throwable, Object o) throws Throwable {
                             if (throwable != null) {
-                                log.warning("Couldn't download page: "+throwable);
+                                log.warning("Couldn't download page: " + throwable);
                             }
-                            context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
-                                    self(), new ProcessNext(), context().system().dispatcher(), null);
+
+                            if (queue.isEmpty()) {
+                                log.info("Finished crawling " + self());
+                                crawlerManager.tell(new DomainFinished(), self());
+                            } else {
+                                // Schedule next page crawl
+                                context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
+                                        self(), new ProcessNext(), context().system().dispatcher(), null);
+                            }
                         }
                     }, context().system().dispatcher());
+                })
+                .match(StartCrawl.class, m -> {
+                    next();
                 })
                 .matchAny(this::unhandled).build());
 
