@@ -6,6 +6,7 @@ import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
+import crawler.messages.FinishedDownloading;
 import crawler.messages.PageContent;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
@@ -37,6 +38,7 @@ public class PageDownloader extends AbstractActor {
                     final String s = EntityUtils.toString(response.getEntity());
                     response.close();
                     extractor.tell(new PageContent(s, uri), self());
+                    sender().tell(new FinishedDownloading(), self());
                 })
                 .matchAny(this::unhandled).build()
         );
