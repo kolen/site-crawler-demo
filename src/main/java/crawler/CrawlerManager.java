@@ -60,6 +60,7 @@ public class CrawlerManager extends AbstractActor {
                 })
                 .match(DomainFinished.class, m -> {
                     workingCrawlers.remove(sender());
+                    log.info("Crawlers left: "+workingCrawlers.size());
                     if (workingCrawlers.isEmpty()) {
                         log.info("All domains finished, waiting for extractors to finish");
 
