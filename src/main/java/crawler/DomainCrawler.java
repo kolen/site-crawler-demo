@@ -36,7 +36,7 @@ public class DomainCrawler extends AbstractActor {
     }
 
     public DomainCrawler(ActorRef crawlerManager) {
-        final ActorRef downloader = context().actorOf(Props.create(PageDownloader.class, crawlerManager), "downloader");
+        final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager), "extractor");
         receive(ReceiveBuilder
                 .match(URI.class, uri -> {
                     if (urlsQueued > MAX_URLS) {

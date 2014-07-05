@@ -6,6 +6,7 @@ import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
+import crawler.messages.FinishedDownloading;
 import crawler.messages.PageContent;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -27,16 +28,17 @@ public class LinkExtractor extends AbstractActor {
 
     public LinkExtractor(ActorRef crawlerManager) {
         receive(ReceiveBuilder
-                .match(PageContent.class, msg -> {
-                    final Document doc = Jsoup.parse(msg.getPageContent(), msg.getBaseURI().toString());
+                .match(URI.class, uri -> {
+                    final Document doc = Jsoup.connect(uri.toString()).get();
+                    log.debug("Downloaded "+doc.location());
                     final Elements links = doc.select("a");
                     for (Element a : links) {
                         final String href = a.attr("abs:href");
                         if (href != null && !href.equals("")) {
                             try {
-                                final URI uri = new URI(href);
-                                if (uri.getScheme().equals("http") || uri.getScheme().equals("https")) {
-                                    crawlerManager.tell(uri, self());
+                                final URI found_uri = new URI(href);
+                                if (found_uri.getScheme().equals("http") || found_uri.getScheme().equals("https")) {
+                                    crawlerManager.tell(found_uri, self());
                                 }
                             } catch (URISyntaxException e) {
                                 // ignore bad urls
@@ -46,6 +48,7 @@ public class LinkExtractor extends AbstractActor {
                             }
                         }
                     }
+                    sender().tell(new FinishedDownloading(), self());
                 })
                 .matchAny(this::unhandled).build());
     }
