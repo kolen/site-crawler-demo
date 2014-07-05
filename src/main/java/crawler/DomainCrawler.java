@@ -10,6 +10,7 @@ import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import crawler.messages.DomainFinished;
 import crawler.messages.ProcessNext;
+import crawler.messages.ReadyForNext;
 import crawler.messages.StartCrawl;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -38,8 +39,11 @@ public class DomainCrawler extends AbstractActor {
     public DomainCrawler(ActorRef crawlerManager) {
         final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager), "extractor");
         receive(ReceiveBuilder
+                // URI received to add to crawl queue
                 .match(URI.class, uri -> {
                     if (urlsQueued > MAX_URLS) {
+                        // Tell again that it is finished even it may already know it
+                        crawlerManager.tell(new DomainFinished(), self());
                         return;
                     }
 
@@ -49,6 +53,18 @@ public class DomainCrawler extends AbstractActor {
                         urlsQueued++;
                     }
                 })
+                // Last page is finished, ready to crawl next page (after delay) or to finish if queue is empty
+                .match(ReadyForNext.class, msg -> {
+                    if (queue.isEmpty()) {
+                        log.info("Finished crawling " + self());
+                        crawlerManager.tell(new DomainFinished(), self());
+                    } else {
+                        // Schedule next page crawl
+                        context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
+                                self(), new ProcessNext(), context().system().dispatcher(), null);
+                    }
+                })
+                // Going to crawl next page
                 .match(ProcessNext.class, msg -> {
                     if (queue.isEmpty()) {
                         return;
@@ -62,18 +78,11 @@ public class DomainCrawler extends AbstractActor {
                             if (throwable != null) {
                                 log.warning("Couldn't download page: " + throwable);
                             }
-
-                            if (queue.isEmpty()) {
-                                log.info("Finished crawling " + self());
-                                crawlerManager.tell(new DomainFinished(), self());
-                            } else {
-                                // Schedule next page crawl
-                                context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
-                                        self(), new ProcessNext(), context().system().dispatcher(), null);
-                            }
+                            self().tell(new ReadyForNext(), self());
                         }
                     }, context().system().dispatcher());
                 })
+                // Start crawl if not yet started
                 .match(StartCrawl.class, m -> {
                     next();
                 })
