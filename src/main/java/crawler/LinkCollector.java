@@ -22,7 +22,7 @@ public class LinkCollector extends AbstractActor {
         receive(ReceiveBuilder
         .match(URI.class, uri -> {
             log.debug("Received uri: "+ uri);
-            URI uriWithoutFragment = new URI(uri.getScheme(), uri.getHost(), uri.getPath(), uri.getQuery());
+            URI uriWithoutFragment = Utils.truncateFragment(uri);
             links.add(uriWithoutFragment);
         })
         .match(DumpLinks.class, msg -> {
