@@ -60,7 +60,7 @@ public class DomainCrawler extends AbstractLoggingActor {
         receive(ReceiveBuilder
                 // URI received to add to crawl queue
                 .match(URI.class, uri -> {
-                    if (urlsQueued > MAX_URLS) {
+                    if (urlsQueued >= MAX_URLS) {
                         return;
                     }
 
