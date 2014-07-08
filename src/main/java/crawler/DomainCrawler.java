@@ -20,6 +20,7 @@ import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
+import static crawler.Utils.truncateFragment;
 
 /**
  *
@@ -64,8 +65,9 @@ public class DomainCrawler extends AbstractLoggingActor {
                     }
 
                     if (!knownUrls.contains(uri)) {
-                        knownUrls.add(uri);
-                        queue.addLast(uri);
+                        URI uri_without_fragment = truncateFragment(uri);
+                        knownUrls.add(uri_without_fragment);
+                        queue.addLast(uri_without_fragment);
                         urlsQueued++;
                     }
                 })
