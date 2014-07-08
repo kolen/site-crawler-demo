@@ -2,8 +2,6 @@ package crawler;
 
 import akka.actor.*;
 import akka.dispatch.OnComplete;
-import akka.event.Logging;
-import akka.event.LoggingAdapter;
 import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
