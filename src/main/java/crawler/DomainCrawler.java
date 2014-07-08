@@ -1,8 +1,6 @@
 package crawler;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.dispatch.OnComplete;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
@@ -25,9 +23,8 @@ import static akka.pattern.Patterns.ask;
 /**
  *
  */
-public class DomainCrawler extends AbstractActor {
+public class DomainCrawler extends AbstractLoggingActor {
     public static final int MAX_URLS = 100;
-    private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
     private int urlsQueued = 0;
@@ -56,7 +53,7 @@ public class DomainCrawler extends AbstractActor {
                 // Last page is finished, ready to crawl next page (after delay) or to finish if queue is empty
                 .match(ReadyForNext.class, msg -> {
                     if (queue.isEmpty()) {
-                        log.info("Finished crawling " + self());
+                        log().info("Finished crawling " + self());
                         crawlerManager.tell(new DomainFinished(), self());
                     } else {
                         // Schedule next page crawl
@@ -76,7 +73,7 @@ public class DomainCrawler extends AbstractActor {
                         @Override
                         public void onComplete(Throwable throwable, Object o) throws Throwable {
                             if (throwable != null) {
-                                log.warning("Couldn't download page: " + throwable);
+                                log().warning("Couldn't download page: " + throwable);
                             }
                             self().tell(new ReadyForNext(), self());
                         }
