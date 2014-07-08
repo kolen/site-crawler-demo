@@ -18,6 +18,8 @@ import scala.Option;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import static crawler.Utils.truncateFragment;
+
 /**
  *
  */
@@ -40,7 +42,8 @@ public class LinkExtractor extends AbstractActor {
                             try {
                                 final URI found_uri = new URI(href);
                                 if (found_uri.getScheme().equals("http") || found_uri.getScheme().equals("https")) {
-                                    crawlerManager.tell(found_uri, self());
+                                    URI truncated_uri = truncateFragment(found_uri);
+                                    crawlerManager.tell(truncated_uri, self());
                                 }
                             } catch (URISyntaxException e) {
                                 // ignore bad urls
