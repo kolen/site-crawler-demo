@@ -3,6 +3,7 @@ package crawler;
 import akka.actor.AbstractActor;
 import akka.actor.ActorRef;
 import akka.actor.Props;
+import akka.actor.Status;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
@@ -12,6 +13,7 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import scala.Option;
 
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -30,7 +32,7 @@ public class LinkExtractor extends AbstractActor {
         receive(ReceiveBuilder
                 .match(URI.class, uri -> {
                     final Document doc = Jsoup.connect(uri.toString()).get();
-                    log.debug("Downloaded "+doc.location());
+                    log.info("Downloaded " + doc.location());
                     final Elements links = doc.select("a");
                     for (Element a : links) {
                         final String href = a.attr("abs:href");
@@ -52,4 +54,15 @@ public class LinkExtractor extends AbstractActor {
                 })
                 .matchAny(this::unhandled).build());
     }
+
+    @Override
+    public void preRestart(Throwable reason, Option<Object> message) throws Exception {
+        if (!(message.isEmpty()) && message.get() instanceof URI) {
+            // Re-schedule current page on restart
+            sender().tell(new Status.Failure(reason), self());
+            sender().tell(message, self());
+        }
+        super.preRestart(reason, message);
+    }
 }
+

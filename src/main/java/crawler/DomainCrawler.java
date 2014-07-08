@@ -39,11 +39,9 @@ public class DomainCrawler extends AbstractLoggingActor {
                             return SupervisorStrategy.stop();
                         }
                     })
-                    .match(SocketTimeoutException.class, e -> {
-                        return SupervisorStrategy.restart();
-                    })
+                    .match(SocketTimeoutException.class, e -> SupervisorStrategy.restart())
                     .match(Throwable.class, e -> {
-                        log().error("Domain crawler error: " + e);
+                        log().error("Page crawler error: " + e);
                         return SupervisorStrategy.restart();
                     }).build());
 
