@@ -1,8 +1,6 @@
 package crawler;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
@@ -27,13 +25,17 @@ import static akka.pattern.Patterns.pipe;
  *
  */
 public class CrawlerManager extends AbstractActor {
-    public static final FiniteDuration LINK_EXTRACTOR_WAIT_DELAY = Duration.create(10, TimeUnit.SECONDS);
     public static final FiniteDuration DUMP_LINKS_TIMEOUT = Duration.create(1, TimeUnit.MINUTES);
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private HashMap<String, ActorRef> domainCrawlers = new HashMap<>();
     private HashSet<ActorRef> workingCrawlers = new HashSet<>();
     private ActorRef linkRegistry;
     private ActorRef startInitiator; // Actor that initiated crawl start
+
+    @Override
+    public SupervisorStrategy supervisorStrategy() {
+        return SupervisorStrategy.stoppingStrategy();
+    }
 
     public CrawlerManager() {
         linkRegistry = context().actorOf(Props.create(LinkRegistry.class));
@@ -43,7 +45,9 @@ public class CrawlerManager extends AbstractActor {
                     final String host = addDomain.getDomain();
                     final URI initialUri = new URI("http", addDomain.getDomain(), "", "");
                     if (!domainCrawlers.containsKey(host)) {
+                        log.info("Creating crawler for domain " + host);
                         ActorRef crawler = context().actorOf(Props.create(DomainCrawler.class, self()), host);
+                        context().watch(crawler);
                         crawler.tell(initialUri, self());
                         domainCrawlers.put(host, crawler);
                         workingCrawlers.add(crawler);
@@ -59,19 +63,9 @@ public class CrawlerManager extends AbstractActor {
                     linkRegistry.tell(uri, self());
                 })
                 .match(DomainFinished.class, m -> {
-                    workingCrawlers.remove(sender());
-                    log.info("Crawlers left: "+workingCrawlers.size());
-                    if (workingCrawlers.isEmpty()) {
-                        log.info("All domains finished, waiting for extractors to finish");
-
-                        context().system().scheduler().scheduleOnce(LINK_EXTRACTOR_WAIT_DELAY,
-                                () -> {
-                                    log.info("Dumping links");
-                                    final Future<Object> ask = ask(linkRegistry, new DumpLinks(),
-                                            new Timeout(DUMP_LINKS_TIMEOUT));
-                                    pipe(ask, context().system().dispatcher()).to(startInitiator);
-                                }, context().system().dispatcher());
-                    }
+                    final ActorRef finishedDomainCrawler = sender();
+                    log.info("Finished from " + finishedDomainCrawler);
+                    domainFinished(finishedDomainCrawler);
                 })
                 .match(StartCrawl.class, m -> {
                     startInitiator = sender();
@@ -79,6 +73,27 @@ public class CrawlerManager extends AbstractActor {
                         crawler.tell(new StartCrawl(), self());
                     }
                 })
+                .match(Terminated.class, t -> {
+                    log.error("Domain crawler crashed: "+t);
+                    domainFinished(t.actor());
+                })
                 .matchAny(this::unhandled).build());
+    }
+
+    private void domainFinished(ActorRef finishedDomainCrawler) {
+        workingCrawlers.remove(finishedDomainCrawler);
+        log.info("Crawlers left: " + workingCrawlers.size());
+        if (workingCrawlers.size() < 3) {
+            for (ActorRef workingCrawler : workingCrawlers) {
+                log.info("Crawler: " + workingCrawler);
+            }
+        }
+
+        if (workingCrawlers.isEmpty()) {
+            log.info("Dumping links");
+            final Future<Object> ask = ask(linkRegistry, new DumpLinks(),
+                    new Timeout(DUMP_LINKS_TIMEOUT));
+            pipe(ask, context().dispatcher()).to(startInitiator);
+        }
     }
 }

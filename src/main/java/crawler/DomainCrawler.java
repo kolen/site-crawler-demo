@@ -4,12 +4,14 @@ import akka.actor.*;
 import akka.dispatch.OnComplete;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
+import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import crawler.messages.DomainFinished;
 import crawler.messages.ProcessNext;
 import crawler.messages.ReadyForNext;
 import crawler.messages.StartCrawl;
+import org.jsoup.HttpStatusException;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
@@ -28,6 +30,25 @@ public class DomainCrawler extends AbstractLoggingActor {
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
     private int urlsQueued = 0;
+
+    private SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("10 seconds"),
+            DeciderBuilder
+                    .match(HttpStatusException.class, e -> {
+                        if (e.getStatusCode() >= 500 && e.getStatusCode() <= 599) {
+                            return SupervisorStrategy.restart();
+                        } else {
+                            return SupervisorStrategy.stop();
+                        }
+                    })
+                    .match(Throwable.class, e -> {
+                        log().error("Domain crawler error: " + e);
+                        return SupervisorStrategy.restart();
+                    }).build());
+
+    @Override
+    public SupervisorStrategy supervisorStrategy() {
+        return strategy;
+    }
 
     static Props props(ActorRef crawlerManager) {
         return Props.create(DomainCrawler.class, () -> new DomainCrawler(crawlerManager));
