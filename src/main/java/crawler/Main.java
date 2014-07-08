@@ -54,6 +54,14 @@ public class Main {
 
                 Files.write(Paths.get(options.getOutputFile()),
                         (Iterable<String>)l.stream().map(URI::toString)::iterator, StandardCharsets.UTF_8);
+
+                for (CrawlResult.DomainSummary domainSummary : ((CrawlResult) o).getDomainSummaries()) {
+                    System.out.printf("%4d %4d %s",
+                            domainSummary.getPagesCrawled(),
+                            domainSummary.getPagesSuccessful(),
+                            domainSummary.getDomain());
+                }
+
                 system.shutdown();
             }
         }, system.dispatcher());

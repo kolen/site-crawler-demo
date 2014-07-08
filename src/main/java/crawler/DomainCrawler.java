@@ -5,10 +5,7 @@ import akka.dispatch.OnComplete;
 import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
-import crawler.messages.DomainFinished;
-import crawler.messages.ProcessNext;
-import crawler.messages.ReadyForNext;
-import crawler.messages.StartCrawl;
+import crawler.messages.*;
 import org.jsoup.HttpStatusException;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -27,8 +24,9 @@ import static crawler.Utils.truncateFragment;
  */
 public class DomainCrawler extends AbstractLoggingActor {
     public static final int MAX_URLS = 100;
-    private LinkedList<URI> queue = new LinkedList<>();
-    private HashSet<URI> knownUrls = new HashSet<>();
+    private final String domain;
+    private final LinkedList<URI> queue = new LinkedList<>();
+    private final HashSet<URI> knownUrls = new HashSet<>();
     private int urlsQueued = 0;
     private int pagesCrawled = 0;
     private int pagesSuccessful = 0;
@@ -53,11 +51,12 @@ public class DomainCrawler extends AbstractLoggingActor {
         return strategy;
     }
 
-    static Props props(ActorRef crawlerManager) {
-        return Props.create(DomainCrawler.class, () -> new DomainCrawler(crawlerManager));
+    static Props props(ActorRef crawlerManager, String domain) {
+        return Props.create(DomainCrawler.class, () -> new DomainCrawler(crawlerManager, domain));
     }
 
-    public DomainCrawler(ActorRef crawlerManager) {
+    public DomainCrawler(ActorRef crawlerManager, String domain) {
+        this.domain = domain;
         final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager), "extractor");
         receive(ReceiveBuilder
                 // URI received to add to crawl queue
@@ -82,7 +81,9 @@ public class DomainCrawler extends AbstractLoggingActor {
 
                     if (queue.isEmpty()) {
                         log().info("Finished crawling " + self());
-                        crawlerManager.tell(new DomainFinished(), self());
+                        CrawlResult.DomainSummary summary = new CrawlResult.DomainSummary(
+                                domain, pagesCrawled, pagesSuccessful);
+                        crawlerManager.tell(new DomainFinished(summary), self());
                     } else {
                         // Schedule next page crawl
                         context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),

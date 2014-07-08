@@ -4,7 +4,6 @@ import akka.actor.AbstractActor;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
-import crawler.messages.CrawlResult;
 import crawler.messages.DumpLinks;
 
 import java.net.URI;
@@ -28,7 +27,7 @@ public class LinkCollector extends AbstractActor {
         .match(DumpLinks.class, msg -> {
             LinkedList<URI> links_list = new LinkedList<>();
             links_list.addAll(links);
-            sender().tell(new CrawlResult(links_list), self());
+            sender().tell(links_list, self());
         })
         .matchAny(this::unhandled).build());
     }

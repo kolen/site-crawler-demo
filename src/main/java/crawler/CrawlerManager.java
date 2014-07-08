@@ -1,14 +1,12 @@
 package crawler;
 
 import akka.actor.*;
+import akka.dispatch.Mapper;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
-import crawler.messages.AddDomain;
-import crawler.messages.DomainFinished;
-import crawler.messages.DumpLinks;
-import crawler.messages.StartCrawl;
+import crawler.messages.*;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
@@ -16,6 +14,7 @@ import scala.concurrent.duration.FiniteDuration;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
@@ -29,6 +28,7 @@ public class CrawlerManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private HashMap<String, ActorRef> domainCrawlers = new HashMap<>();
     private HashSet<ActorRef> workingCrawlers = new HashSet<>();
+    private LinkedList<CrawlResult.DomainSummary> summaries = new LinkedList<>();
     private ActorRef linkCollector;
     private ActorRef startInitiator; // Actor that initiated crawl start
 
@@ -46,7 +46,7 @@ public class CrawlerManager extends AbstractActor {
                     final URI initialUri = new URI("http", addDomain.getDomain(), "", "");
                     if (!domainCrawlers.containsKey(host)) {
                         log.info("Creating crawler for domain " + host);
-                        ActorRef crawler = context().actorOf(Props.create(DomainCrawler.class, self()), host);
+                        ActorRef crawler = context().actorOf(Props.create(DomainCrawler.class, self(), host), host);
                         context().watch(crawler);
                         crawler.tell(initialUri, self());
                         domainCrawlers.put(host, crawler);
@@ -65,6 +65,7 @@ public class CrawlerManager extends AbstractActor {
                 .match(DomainFinished.class, m -> {
                     final ActorRef finishedDomainCrawler = sender();
                     log.info("Finished from " + finishedDomainCrawler);
+                    summaries.addLast(m.getSummary());
                     domainFinished(finishedDomainCrawler);
                 })
                 .match(StartCrawl.class, m -> {
@@ -74,7 +75,7 @@ public class CrawlerManager extends AbstractActor {
                     }
                 })
                 .match(Terminated.class, t -> {
-                    log.error("Domain crawler crashed: "+t);
+                    log.error("Domain crawler crashed: " + t);
                     domainFinished(t.actor());
                 })
                 .matchAny(this::unhandled).build());
@@ -83,7 +84,7 @@ public class CrawlerManager extends AbstractActor {
     private void domainFinished(ActorRef finishedDomainCrawler) {
         workingCrawlers.remove(finishedDomainCrawler);
         log.info("Crawlers left: " + workingCrawlers.size());
-        if (workingCrawlers.size() < 3) {
+        if (workingCrawlers.size() < 3000) {
             for (ActorRef workingCrawler : workingCrawlers) {
                 log.info("Crawler: " + workingCrawler);
             }
@@ -92,7 +93,15 @@ public class CrawlerManager extends AbstractActor {
         if (workingCrawlers.isEmpty()) {
             log.info("Dumping links");
             final Future<Object> ask = ask(linkCollector, new DumpLinks(),
-                    new Timeout(DUMP_LINKS_TIMEOUT));
+                    new Timeout(DUMP_LINKS_TIMEOUT)).map(new Mapper<Object, Object>() {
+                @Override
+                public Object apply(Object parameter) {
+                    if (parameter instanceof LinkedList) {
+                        return new CrawlResult((LinkedList<URI>) parameter, summaries);
+                    }
+                    throw new IllegalStateException();
+                }
+            }, context().dispatcher());
             pipe(ask, context().dispatcher()).to(startInitiator);
         }
     }

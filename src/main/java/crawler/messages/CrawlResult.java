@@ -23,12 +23,12 @@ public class CrawlResult{
         return domainSummaries;
     }
 
-    private class DomainSummary {
+    public static class DomainSummary {
         private String domain;
         private int pagesCrawled;
         private int pagesSuccessful;
 
-        private DomainSummary(String domain, int pagesCrawled, int pagesSuccessful) {
+        public DomainSummary(String domain, int pagesCrawled, int pagesSuccessful) {
             this.domain = domain;
             this.pagesCrawled = pagesCrawled;
             this.pagesSuccessful = pagesSuccessful;
