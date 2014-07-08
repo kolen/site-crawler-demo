@@ -13,6 +13,7 @@ import org.jsoup.HttpStatusException;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -37,6 +38,9 @@ public class DomainCrawler extends AbstractLoggingActor {
                         } else {
                             return SupervisorStrategy.stop();
                         }
+                    })
+                    .match(SocketTimeoutException.class, e -> {
+                        return SupervisorStrategy.restart();
                     })
                     .match(Throwable.class, e -> {
                         log().error("Domain crawler error: " + e);
