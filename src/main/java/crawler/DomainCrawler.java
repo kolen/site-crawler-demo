@@ -30,6 +30,8 @@ public class DomainCrawler extends AbstractLoggingActor {
     private LinkedList<URI> queue = new LinkedList<>();
     private HashSet<URI> knownUrls = new HashSet<>();
     private int urlsQueued = 0;
+    private int pagesCrawled = 0;
+    private int pagesSuccessful = 0;
 
     private SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("10 seconds"),
             DeciderBuilder
@@ -73,6 +75,11 @@ public class DomainCrawler extends AbstractLoggingActor {
                 })
                 // Last page is finished, ready to crawl next page (after delay) or to finish if queue is empty
                 .match(ReadyForNext.class, msg -> {
+                    pagesCrawled++;
+                    if (msg.isLastSuccess()) {
+                        pagesSuccessful++;
+                    }
+
                     if (queue.isEmpty()) {
                         log().info("Finished crawling " + self());
                         crawlerManager.tell(new DomainFinished(), self());
@@ -96,7 +103,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                             if (throwable != null) {
                                 log().warning("Couldn't download page: " + throwable);
                             }
-                            self().tell(new ReadyForNext(), self());
+                            self().tell(new ReadyForNext(throwable == null), self());
                         }
                     }, context().system().dispatcher());
                 })
