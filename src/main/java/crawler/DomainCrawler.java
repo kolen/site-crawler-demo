@@ -57,7 +57,6 @@ public class DomainCrawler extends AbstractLoggingActor {
 
     public DomainCrawler(ActorRef crawlerManager, String domain) {
         this.domain = domain;
-        final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager), "extractor");
         receive(ReceiveBuilder
                 // URI received to add to crawl queue
                 .match(URI.class, uri -> {
@@ -96,8 +95,10 @@ public class DomainCrawler extends AbstractLoggingActor {
                         return;
                     }
 
+                    final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
                     final Future<Object> f = ask(downloader, queue.removeFirst(),
                             new Timeout(Duration.create(30, TimeUnit.SECONDS)));
+
                     f.onComplete(new OnComplete<Object>() {
                         @Override
                         public void onComplete(Throwable throwable, Object o) throws Throwable {
