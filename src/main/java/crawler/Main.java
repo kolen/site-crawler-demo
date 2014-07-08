@@ -16,6 +16,7 @@ import scala.concurrent.duration.Duration;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.LinkedList;
@@ -50,9 +51,9 @@ public class Main {
             public void onSuccess(Object o) throws Throwable {
                 LinkedList<URI> l = ((CrawlResult) o).getLinks();
                 log.info("Number of links discovered: " + l.size());
-                for (URI uri : l) {
-                    System.out.println(uri);
-                }
+
+                Files.write(Paths.get(options.getOutputFile()),
+                        (Iterable<String>)l.stream().map(URI::toString)::iterator, StandardCharsets.UTF_8);
                 system.shutdown();
             }
         }, system.dispatcher());
