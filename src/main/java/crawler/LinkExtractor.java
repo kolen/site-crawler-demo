@@ -8,7 +8,6 @@ import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import crawler.messages.FinishedDownloading;
-import crawler.messages.PageContent;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
