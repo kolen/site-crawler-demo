@@ -57,7 +57,7 @@ public class CrawlerManager extends AbstractActor {
                     final String host = uri.getHost();
                     ActorRef crawler = domainCrawlers.get(host);
                     if (crawler != null) {
-                        workingCrawlers.add(crawler);
+//                        workingCrawlers.add(crawler);
                         crawler.tell(uri, self());
                     }
                     linkCollector.tell(uri, self());
