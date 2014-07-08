@@ -60,8 +60,6 @@ public class DomainCrawler extends AbstractLoggingActor {
                 // URI received to add to crawl queue
                 .match(URI.class, uri -> {
                     if (urlsQueued > MAX_URLS) {
-                        // Tell again that it is finished even it may already know it
-                        crawlerManager.tell(new DomainFinished(), self());
                         return;
                     }
 
