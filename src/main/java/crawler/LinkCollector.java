@@ -14,11 +14,11 @@ import java.util.LinkedList;
 /**
  *
  */
-public class LinkRegistry extends AbstractActor {
+public class LinkCollector extends AbstractActor {
     LoggingAdapter log = Logging.getLogger(getContext().system(), this);
     HashSet<URI> links = new HashSet<>();
 
-    public LinkRegistry() {
+    public LinkCollector() {
         receive(ReceiveBuilder
         .match(URI.class, uri -> {
             log.debug("Received uri: "+ uri);

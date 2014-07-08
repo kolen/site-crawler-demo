@@ -29,7 +29,7 @@ public class CrawlerManager extends AbstractActor {
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
     private HashMap<String, ActorRef> domainCrawlers = new HashMap<>();
     private HashSet<ActorRef> workingCrawlers = new HashSet<>();
-    private ActorRef linkRegistry;
+    private ActorRef linkCollector;
     private ActorRef startInitiator; // Actor that initiated crawl start
 
     @Override
@@ -38,7 +38,7 @@ public class CrawlerManager extends AbstractActor {
     }
 
     public CrawlerManager() {
-        linkRegistry = context().actorOf(Props.create(LinkRegistry.class));
+        linkCollector = context().actorOf(Props.create(LinkCollector.class));
 
         receive(ReceiveBuilder
                 .match(AddDomain.class, addDomain -> {
@@ -60,7 +60,7 @@ public class CrawlerManager extends AbstractActor {
                         workingCrawlers.add(crawler);
                         crawler.tell(uri, self());
                     }
-                    linkRegistry.tell(uri, self());
+                    linkCollector.tell(uri, self());
                 })
                 .match(DomainFinished.class, m -> {
                     final ActorRef finishedDomainCrawler = sender();
@@ -91,7 +91,7 @@ public class CrawlerManager extends AbstractActor {
 
         if (workingCrawlers.isEmpty()) {
             log.info("Dumping links");
-            final Future<Object> ask = ask(linkRegistry, new DumpLinks(),
+            final Future<Object> ask = ask(linkCollector, new DumpLinks(),
                     new Timeout(DUMP_LINKS_TIMEOUT));
             pipe(ask, context().dispatcher()).to(startInitiator);
         }
