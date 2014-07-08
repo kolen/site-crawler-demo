@@ -56,7 +56,7 @@ public class Main {
                         (Iterable<String>)l.stream().map(URI::toString)::iterator, StandardCharsets.UTF_8);
 
                 for (CrawlResult.DomainSummary domainSummary : ((CrawlResult) o).getDomainSummaries()) {
-                    System.out.printf("%4d %4d %s",
+                    System.out.printf("%4d %4d %s\n",
                             domainSummary.getPagesCrawled(),
                             domainSummary.getPagesSuccessful(),
                             domainSummary.getDomain());
