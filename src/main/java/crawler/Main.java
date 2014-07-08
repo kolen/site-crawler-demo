@@ -9,7 +9,7 @@ import akka.event.LoggingAdapter;
 import akka.util.Timeout;
 import com.beust.jcommander.JCommander;
 import crawler.messages.AddDomain;
-import crawler.messages.LinksList;
+import crawler.messages.CrawlResult;
 import crawler.messages.StartCrawl;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
@@ -48,7 +48,7 @@ public class Main {
         result.onSuccess(new OnSuccess<Object>() {
             @Override
             public void onSuccess(Object o) throws Throwable {
-                LinkedList<URI> l = ((LinksList) o).getLinks();
+                LinkedList<URI> l = ((CrawlResult) o).getLinks();
                 log.info("Number of links discovered: " + l.size());
                 for (URI uri : l) {
                     System.out.println(uri);
