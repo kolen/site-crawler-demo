@@ -31,6 +31,11 @@ public class DomainCrawler extends AbstractLoggingActor {
     private int pagesCrawled = 0;
     private int pagesSuccessful = 0;
 
+    private enum Status {
+        JUST_CREATED, PROCESSING_FIRST_PAGE, WAITING_BEFORE_NEXT_PAGE, PROCESSING_PAGE, IDLE
+    }
+    private Status status = Status.JUST_CREATED;
+
     private SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("10 seconds"),
             DeciderBuilder
                     .match(HttpStatusException.class, e -> {
@@ -72,7 +77,8 @@ public class DomainCrawler extends AbstractLoggingActor {
                     }
                 })
                 // Last page is finished, ready to crawl next page (after delay) or to finish if queue is empty
-                .match(ReadyForNext.class, msg -> {
+                .match(ReadyForNext.class,
+                        msg -> status == Status.PROCESSING_PAGE || status == Status.PROCESSING_FIRST_PAGE, msg -> {
                     pagesCrawled++;
                     if (msg.isLastSuccess()) {
                         pagesSuccessful++;
@@ -83,14 +89,16 @@ public class DomainCrawler extends AbstractLoggingActor {
                         CrawlResult.DomainSummary summary = new CrawlResult.DomainSummary(
                                 domain, pagesCrawled, pagesSuccessful);
                         crawlerManager.tell(new DomainFinished(summary), self());
+                        status = Status.IDLE;
                     } else {
                         // Schedule next page crawl
                         context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
                                 self(), new ProcessNext(), context().system().dispatcher(), null);
+                        status = Status.WAITING_BEFORE_NEXT_PAGE;
                     }
                 })
                 // Going to crawl next page
-                .match(ProcessNext.class, msg -> {
+                .match(ProcessNext.class, msg -> status == Status.WAITING_BEFORE_NEXT_PAGE, msg -> {
                     if (queue.isEmpty()) {
                         return;
                     }
@@ -108,9 +116,10 @@ public class DomainCrawler extends AbstractLoggingActor {
                             self().tell(new ReadyForNext(throwable == null), self());
                         }
                     }, context().system().dispatcher());
+                    status = Status.PROCESSING_PAGE;
                 })
                 // Start crawl if not yet started
-                .match(StartCrawl.class, m -> {
+                .match(StartCrawl.class, msg -> status == Status.JUST_CREATED, m -> {
                     next();
                 })
                 .matchAny(this::unhandled).build());
