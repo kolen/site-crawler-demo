@@ -120,12 +120,8 @@ public class DomainCrawler extends AbstractLoggingActor {
                 })
                 // Start crawl if not yet started
                 .match(StartCrawl.class, msg -> status == Status.JUST_CREATED, m -> {
-                    next();
+                    self().tell(new ProcessNext(), self());
                 })
                 .matchAny(this::unhandled).build());
-    }
-
-    private void next() {
-        self().tell(new ProcessNext(), self());
     }
 }
