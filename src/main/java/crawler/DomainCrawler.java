@@ -112,6 +112,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                         @Override
                         public void onComplete(Throwable throwable, Object o) throws Throwable {
                             if (throwable != null) {
+                                // TODO: currently only triggers on timeout, should trigger instantly on error
                                 log().warning("Couldn't download page: " + throwable);
                             }
                             self().tell(new ReadyForNext(throwable == null), self());
