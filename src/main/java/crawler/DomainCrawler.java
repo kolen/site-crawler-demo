@@ -1,6 +1,7 @@
 package crawler;
 
 import akka.actor.*;
+import akka.dispatch.Mapper;
 import akka.dispatch.OnComplete;
 import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
@@ -120,7 +121,27 @@ public class DomainCrawler extends AbstractLoggingActor {
                 })
                 // Start crawl if not yet started
                 .match(StartCrawl.class, msg -> status == Status.JUST_CREATED, m -> {
-                    self().tell(new ProcessNext(), self());
+                    URI startingUri = new URI("http", domain, "", "");
+
+                    final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
+                    final Future<Object> f = ask(downloader, startingUri,
+                            new Timeout(Duration.create(30, TimeUnit.SECONDS)));
+
+                    ActorRef self = self();
+                    f.onComplete(new OnComplete<Object>() {
+                        @Override
+                        public void onComplete(Throwable throwable, Object o) throws Throwable {
+                            if (throwable != null) {
+                                log().error("Couldn't download starting page for " + domain + ": " + throwable);
+                                crawlerManager.tell(new DomainFinished(new CrawlResult.DomainSummary(domain, 1, 0)),
+                                        self);
+                            } else {
+                                self.tell(new ReadyForNext(true), self);
+                            }
+                        }
+                    }, context().dispatcher());
+
+                    status = Status.PROCESSING_FIRST_PAGE;
                 })
                 .matchAny(this::unhandled).build());
     }
