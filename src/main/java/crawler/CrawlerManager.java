@@ -74,6 +74,9 @@ public class CrawlerManager extends AbstractActor {
                         crawler.tell(new StartCrawl(), self());
                     }
                 })
+                .match(SynonymFound.class, m -> {
+                    domainCrawlers.put(m.getDomainSynonym(), domainCrawlers.get(m.getOriginalDomain()));
+                })
                 .match(Terminated.class, t -> {
                     log.error("Domain crawler crashed: " + t);
                     domainFinished(t.actor());
