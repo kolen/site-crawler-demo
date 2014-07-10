@@ -105,7 +105,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                     }
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
-                    final Future<Object> f = ask(downloader, queue.removeFirst(),
+                    final Future<Object> f = ask(downloader, new CrawlPage(queue.removeFirst()),
                             new Timeout(Duration.create(30, TimeUnit.SECONDS)));
 
                     f.onComplete(new OnComplete<Object>() {
@@ -124,7 +124,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                     URI startingUri = new URI("http", domain, "", "");
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
-                    final Future<Object> f = ask(downloader, startingUri,
+                    final Future<Object> f = ask(downloader, new CrawlPage(startingUri, true),
                             new Timeout(Duration.create(30, TimeUnit.SECONDS)));
 
                     ActorRef self = self();

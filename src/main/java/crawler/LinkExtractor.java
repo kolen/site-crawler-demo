@@ -7,7 +7,9 @@ import akka.actor.Props;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
+import crawler.messages.CrawlPage;
 import crawler.messages.FinishedDownloading;
+import crawler.messages.SynonymFound;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -28,10 +30,21 @@ public class LinkExtractor extends AbstractActor {
 
     public LinkExtractor(ActorRef crawlerManager) {
         receive(ReceiveBuilder
-                .match(URI.class, uri -> {
-                    final Document doc = Jsoup.connect(uri.toString()).get();
+                .match(CrawlPage.class, cp -> {
+                    final Document doc = Jsoup.connect(cp.getUri().toString()).get();
                     log.info("Downloaded " + doc.location());
                     final Elements links = doc.select("a");
+
+                    if (cp.isFirst()) {
+                        URI newLocation = new URI(doc.location());
+                        final String oldHost = cp.getUri().getHost();
+                        final String newHost = newLocation.getHost();
+                        if (!newHost.equals(oldHost)) {
+                            crawlerManager.tell(new SynonymFound(oldHost, newHost), self());
+                            log.info("Found synonym for "+oldHost+": "+newHost);
+                        }
+                    }
+
                     for (Element a : links) {
                         final String href = a.attr("abs:href");
                         if (href != null && !href.equals("")) {
