@@ -1,7 +1,6 @@
 package crawler;
 
 import akka.actor.*;
-import akka.dispatch.Mapper;
 import akka.dispatch.OnComplete;
 import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
