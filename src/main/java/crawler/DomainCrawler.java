@@ -6,11 +6,9 @@ import akka.japi.pf.DeciderBuilder;
 import akka.japi.pf.ReceiveBuilder;
 import akka.util.Timeout;
 import crawler.messages.*;
-import org.jsoup.HttpStatusException;
 import scala.concurrent.Future;
 import scala.concurrent.duration.Duration;
 
-import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.LinkedList;
