@@ -24,6 +24,7 @@ import static crawler.Utils.truncateFragment;
  */
 public class DomainCrawler extends AbstractLoggingActor {
     public static final int MAX_URLS = 100;
+    public static final int EXTRACTOR_REPLY_TIMEOUT = 30;
     private final String domain;
     private final LinkedList<URI> queue = new LinkedList<>();
     private final HashSet<URI> knownUrls = new HashSet<>();
@@ -105,7 +106,7 @@ public class DomainCrawler extends AbstractLoggingActor {
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
                     final Future<Object> f = ask(downloader, new CrawlPage(queue.removeFirst()),
-                            new Timeout(Duration.create(30, TimeUnit.SECONDS)));
+                            new Timeout(Duration.create(EXTRACTOR_REPLY_TIMEOUT, TimeUnit.SECONDS)));
 
                     f.onComplete(new OnComplete<Object>() {
                         @Override
@@ -125,7 +126,7 @@ public class DomainCrawler extends AbstractLoggingActor {
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
                     final Future<Object> f = ask(downloader, new CrawlPage(startingUri, true),
-                            new Timeout(Duration.create(30, TimeUnit.SECONDS)));
+                            new Timeout(Duration.create(EXTRACTOR_REPLY_TIMEOUT, TimeUnit.SECONDS)));
 
                     ActorRef self = self();
                     f.onComplete(new OnComplete<Object>() {
