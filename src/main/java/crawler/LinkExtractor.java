@@ -1,15 +1,13 @@
 package crawler;
 
-import akka.actor.AbstractActor;
-import akka.actor.ActorRef;
-import akka.actor.PoisonPill;
-import akka.actor.Props;
+import akka.actor.*;
 import akka.event.Logging;
 import akka.event.LoggingAdapter;
 import akka.japi.pf.ReceiveBuilder;
 import crawler.messages.CrawlPage;
 import crawler.messages.FinishedDownloading;
 import crawler.messages.SynonymFound;
+import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -31,7 +29,20 @@ public class LinkExtractor extends AbstractActor {
     public LinkExtractor(ActorRef crawlerManager) {
         receive(ReceiveBuilder
                 .match(CrawlPage.class, cp -> {
-                    final Document doc = Jsoup.connect(cp.getUri().toString()).get();
+                    Document doc;
+                    try {
+                        doc = Jsoup.connect(cp.getUri().toString()).get();
+                    } catch (HttpStatusException e) {
+                        // Non-transient HTTP errors - immediately signal failure
+                        if (e.getStatusCode() < 500) {
+                            crawlerManager.tell(new Status.Failure(e), self());
+                            self().tell(PoisonPill.getInstance(), self());
+                            return;
+                        } else {
+                            // Re-throw other errors so supervision will handle it
+                            throw e;
+                        }
+                    }
                     log.info("Downloaded " + doc.location());
                     final Elements links = doc.select("a");
 

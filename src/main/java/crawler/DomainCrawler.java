@@ -39,14 +39,6 @@ public class DomainCrawler extends AbstractLoggingActor {
 
     private SupervisorStrategy strategy = new OneForOneStrategy(3, Duration.create("10 seconds"),
             DeciderBuilder
-                    .match(HttpStatusException.class, e -> {
-                        if (e.getStatusCode() >= 500 && e.getStatusCode() <= 599) {
-                            return SupervisorStrategy.restart();
-                        } else {
-                            return SupervisorStrategy.stop();
-                        }
-                    })
-                    .match(SocketTimeoutException.class, e -> SupervisorStrategy.restart())
                     .match(Throwable.class, e -> {
                         log().error("Page crawler error: " + e);
                         return SupervisorStrategy.restart();
