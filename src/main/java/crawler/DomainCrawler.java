@@ -143,6 +143,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                     }, context().dispatcher());
 
                     status = Status.PROCESSING_FIRST_PAGE;
+                    urlsQueued++;
                 })
                 .matchAny(this::unhandled).build());
     }
