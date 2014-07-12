@@ -20,6 +20,8 @@ import java.net.URISyntaxException;
  *
  */
 public class LinkExtractor extends AbstractActor {
+    /** "request timeouts (connect and read)" */
+    public static final int HTTP_TIMEOUT = 1500;
     private final LoggingAdapter log = Logging.getLogger(context().system(), this);
 
     static Props props(ActorRef crawlerManager) {
@@ -31,7 +33,7 @@ public class LinkExtractor extends AbstractActor {
                 .match(CrawlPage.class, cp -> {
                     Document doc;
                     try {
-                        doc = Jsoup.connect(cp.getUri().toString()).get();
+                        doc = Jsoup.connect(cp.getUri().toString()).timeout(HTTP_TIMEOUT).get();
                     } catch (HttpStatusException e) {
                         // Non-transient HTTP errors - immediately signal failure
                         if (e.getStatusCode() < 500) {
