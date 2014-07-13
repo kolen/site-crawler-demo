@@ -9,6 +9,7 @@ import crawler.messages.FinishedDownloading;
 import crawler.messages.SynonymFound;
 import org.jsoup.HttpStatusException;
 import org.jsoup.Jsoup;
+import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -44,6 +45,10 @@ public class LinkExtractor extends AbstractActor {
                             // Re-throw other errors so supervision will handle it
                             throw e;
                         }
+                    } catch (UnsupportedMimeTypeException e) {
+                        sender().tell(new Status.Failure(e), self());
+                        self().tell(PoisonPill.getInstance(), self());
+                        return;
                     }
                     log.info("Downloaded " + doc.location());
                     final Elements links = doc.select("a");
