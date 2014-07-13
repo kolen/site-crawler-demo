@@ -37,7 +37,7 @@ public class LinkExtractor extends AbstractActor {
                     } catch (HttpStatusException e) {
                         // Non-transient HTTP errors - immediately signal failure
                         if (e.getStatusCode() < 500) {
-                            crawlerManager.tell(new Status.Failure(e), self());
+                            sender().tell(new Status.Failure(e), self());
                             self().tell(PoisonPill.getInstance(), self());
                             return;
                         } else {
