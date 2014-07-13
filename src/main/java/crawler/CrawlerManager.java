@@ -15,6 +15,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
@@ -69,9 +70,13 @@ public class CrawlerManager extends AbstractActor {
                     domainFinished(finishedDomainCrawler);
                 })
                 .match(StartCrawl.class, m -> {
+                    final Random random = new Random();
                     startInitiator = sender();
                     for (ActorRef crawler : domainCrawlers.values()) {
-                        crawler.tell(new StartCrawl(), self());
+                        final FiniteDuration randomDelay = FiniteDuration.create(random.nextInt(30000),
+                                TimeUnit.MILLISECONDS);
+                        context().system().scheduler().scheduleOnce(randomDelay, crawler,
+                                new StartCrawl(), context().dispatcher(), self());
                     }
                 })
                 .match(SynonymFound.class, m -> {
