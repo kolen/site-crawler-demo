@@ -12,10 +12,7 @@ import scala.concurrent.duration.Duration;
 import scala.concurrent.duration.FiniteDuration;
 
 import java.net.URI;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static akka.pattern.Patterns.ask;
@@ -95,12 +92,15 @@ public class CrawlerManager extends AbstractActor {
 
         if (workingCrawlers.isEmpty()) {
             log.info("Dumping links");
+
+            // Close over copy, not mutable original
+            final LinkedList<CrawlResult.DomainSummary> summariesCopy = new LinkedList<>(summaries);
             final Future<Object> ask = ask(linkCollector, new DumpLinks(),
                     new Timeout(DUMP_LINKS_TIMEOUT)).map(new Mapper<Object, Object>() {
                 @Override
                 public Object apply(Object parameter) {
                     if (parameter instanceof LinkedList) {
-                        return new CrawlResult((LinkedList<URI>) parameter, summaries);
+                        return new CrawlResult((LinkedList<URI>) parameter, summariesCopy);
                     }
                     throw new IllegalStateException();
                 }
