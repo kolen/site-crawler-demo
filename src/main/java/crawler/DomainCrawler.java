@@ -111,7 +111,9 @@ public class DomainCrawler extends AbstractLoggingActor {
                                 // TODO: currently only triggers on timeout, should trigger instantly on error
                                 log().warning("Couldn't download page: " + throwable);
                             }
-                            self().tell(new ActualURI(((FinishedDownloading)o).getActualURI()), self());
+                            if (o instanceof FinishedDownloading) {
+                                self().tell(new ActualURI(((FinishedDownloading) o).getActualURI()), self());
+                            }
                             self().tell(new ReadyForNext(throwable == null), self());
                         }
                     }, context().system().dispatcher());
@@ -133,8 +135,10 @@ public class DomainCrawler extends AbstractLoggingActor {
                                 log().error("Couldn't download starting page for " + domain + ": " + throwable);
                                 crawlerManager.tell(new DomainFinished(new CrawlResult.DomainSummary(domain, 1, 0)),
                                         self);
-                                self().tell(new ActualURI(((FinishedDownloading)o).getActualURI()), self());
                             } else {
+                                if (o instanceof FinishedDownloading) {
+                                    self().tell(new ActualURI(((FinishedDownloading) o).getActualURI()), self());
+                                }
                                 self.tell(new ReadyForNext(true), self);
                             }
                         }
