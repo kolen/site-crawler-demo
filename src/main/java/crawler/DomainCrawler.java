@@ -77,27 +77,25 @@ public class DomainCrawler extends AbstractLoggingActor {
                         pagesSuccessful++;
                     }
 
-                    if (queue.isEmpty()) {
-                        log().info("Finished crawling " + self());
-                        CrawlResult.DomainSummary summary = new CrawlResult.DomainSummary(
-                                domain, pagesCrawled, pagesSuccessful);
-                        crawlerManager.tell(new DomainFinished(summary), self());
-                        status = Status.IDLE;
-                    } else {
-                        // Schedule next page crawl
-                        context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
-                                self(), new ProcessNext(), context().system().dispatcher(), null);
-                        status = Status.WAITING_BEFORE_NEXT_PAGE;
-                    }
-                })
+                            if (queue.isEmpty()) {
+                                signalQueueEmpty(crawlerManager, domain);
+                            } else {
+                                // Schedule next page crawl
+                                context().system().scheduler().scheduleOnce(Duration.create(1, TimeUnit.SECONDS),
+                                        self(), new ProcessNext(), context().system().dispatcher(), null);
+                                status = Status.WAITING_BEFORE_NEXT_PAGE;
+                            }
+                        })
                 // Going to crawl next page
                 .match(ProcessNext.class, msg -> status == Status.WAITING_BEFORE_NEXT_PAGE, msg -> {
                     if (queue.isEmpty()) {
+                        signalQueueEmpty(crawlerManager, domain);
                         return;
                     }
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
-                    final Future<Object> f = ask(downloader, new CrawlPage(queue.removeFirst()),
+                    final URI uriToCrawl = queue.removeFirst();
+                    final Future<Object> f = ask(downloader, new CrawlPage(uriToCrawl),
                             new Timeout(Duration.create(EXTRACTOR_REPLY_TIMEOUT, TimeUnit.SECONDS)));
 
                     f.onComplete(new OnComplete<Object>() {
@@ -140,5 +138,13 @@ public class DomainCrawler extends AbstractLoggingActor {
                     urlsQueued++;
                 })
                 .matchAny(this::unhandled).build());
+    }
+
+    private void signalQueueEmpty(ActorRef crawlerManager, String domain) {
+        log().info("Finished crawling " + self());
+        CrawlResult.DomainSummary summary = new CrawlResult.DomainSummary(
+                domain, pagesCrawled, pagesSuccessful);
+        crawlerManager.tell(new DomainFinished(summary), self());
+        status = Status.IDLE;
     }
 }
