@@ -23,7 +23,6 @@ import static crawler.Utils.truncateFragment;
 public class DomainCrawler extends AbstractLoggingActor {
     public static final int MAX_URLS = 100;
     public static final int EXTRACTOR_REPLY_TIMEOUT = 30;
-    private final String domain;
     private final LinkedList<URI> queue = new LinkedList<>();
     private final HashSet<URI> knownUrls = new HashSet<>();
     private int urlsQueued = 0;
@@ -52,7 +51,6 @@ public class DomainCrawler extends AbstractLoggingActor {
     }
 
     public DomainCrawler(ActorRef crawlerManager, String domain) {
-        this.domain = domain;
         receive(ReceiveBuilder
                 // URI received to add to crawl queue
                 .match(URI.class, uri -> {
