@@ -92,11 +92,6 @@ public class CrawlerManager extends AbstractActor {
     private void domainFinished(ActorRef finishedDomainCrawler) {
         workingCrawlers.remove(finishedDomainCrawler);
         log.info("Crawlers left: " + workingCrawlers.size());
-        if (workingCrawlers.size() < 3000) {
-            for (ActorRef workingCrawler : workingCrawlers) {
-                log.info("Crawler: " + workingCrawler);
-            }
-        }
 
         if (workingCrawlers.isEmpty()) {
             log.info("Dumping links");
