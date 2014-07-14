@@ -95,6 +95,12 @@ public class DomainCrawler extends AbstractLoggingActor {
 
                     final ActorRef downloader = context().actorOf(Props.create(LinkExtractor.class, crawlerManager));
                     final URI uriToCrawl = queue.removeFirst();
+
+                    // Maybe URI becomes known after it is in queue
+                    if (knownUrls.contains(uriToCrawl)) {
+                        self().tell(new ProcessNext(), self());
+                    }
+
                     final Future<Object> f = ask(downloader, new CrawlPage(uriToCrawl),
                             new Timeout(Duration.create(EXTRACTOR_REPLY_TIMEOUT, TimeUnit.SECONDS)));
 
