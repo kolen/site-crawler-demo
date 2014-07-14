@@ -79,7 +79,7 @@ public class LinkExtractor extends AbstractActor {
                             }
                         }
                     }
-                    sender().tell(new FinishedDownloading(), self());
+                    sender().tell(new FinishedDownloading(new URI(doc.location())), self());
                     self().tell(PoisonPill.getInstance(), self());
                 })
                 .matchAny(this::unhandled).build());

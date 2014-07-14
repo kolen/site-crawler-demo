@@ -65,6 +65,10 @@ public class DomainCrawler extends AbstractLoggingActor {
                         urlsQueued++;
                     }
                 })
+                // URI after all redirects found after crawl
+                .match(ActualURI.class, a -> {
+                    knownUrls.add(a.getActualURI());
+                })
                 // Last page is finished, ready to crawl next page (after delay) or to finish if queue is empty
                 .match(ReadyForNext.class,
                         msg -> status == Status.PROCESSING_PAGE || status == Status.PROCESSING_FIRST_PAGE, msg -> {
@@ -103,6 +107,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                                 // TODO: currently only triggers on timeout, should trigger instantly on error
                                 log().warning("Couldn't download page: " + throwable);
                             }
+                            self().tell(new ActualURI(((FinishedDownloading)o).getActualURI()), self());
                             self().tell(new ReadyForNext(throwable == null), self());
                         }
                     }, context().system().dispatcher());
@@ -124,6 +129,7 @@ public class DomainCrawler extends AbstractLoggingActor {
                                 log().error("Couldn't download starting page for " + domain + ": " + throwable);
                                 crawlerManager.tell(new DomainFinished(new CrawlResult.DomainSummary(domain, 1, 0)),
                                         self);
+                                self().tell(new ActualURI(((FinishedDownloading)o).getActualURI()), self());
                             } else {
                                 self.tell(new ReadyForNext(true), self);
                             }
